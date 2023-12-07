@@ -78,3 +78,18 @@ def fetch_stock_data_for_date(date, symbol='DTE'):
                 'volume': stock_data['volume']
             }
     return None
+
+def fetch_air_quality_data_for_date(date):
+    # Your API request for air quality data
+    params = {
+        "latitude": 42.2776,
+        "longitude": -83.7409,
+        "hourly": ["pm10", "pm2_5", "carbon_monoxide", "nitrogen_dioxide", "sulphur_dioxide", "ozone"],
+        "start_date": date.strftime('%Y-%m-%d'),
+        "end_date": date.strftime('%Y-%m-%d')
+    }
+    response = requests.get("https://air-quality-api.open-meteo.com/v1/air-quality", params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
