@@ -93,3 +93,11 @@ def fetch_air_quality_data_for_date(date):
         return response.json()
     else:
         return None
+    
+# Function to get the dates that already have data
+def get_existing_dates(db_connection):
+    cursor = db_connection.cursor()
+    cursor.execute("SELECT date FROM temperature")
+    return {datetime.strptime(row[0].split()[0], "%Y-%m-%d").date() for row in cursor.fetchall()}
+
+existing_dates = get_existing_dates(conn)
