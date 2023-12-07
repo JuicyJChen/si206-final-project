@@ -101,3 +101,115 @@ def get_existing_dates(db_connection):
     return {datetime.strptime(row[0].split()[0], "%Y-%m-%d").date() for row in cursor.fetchall()}
 
 existing_dates = get_existing_dates(conn)
+
+
+# Function to calculate sample dates throughout the year, excluding existing dates
+def calculate_sample_dates(start_date, end_date, total_samples, existing_dates):
+    # Ensure all_dates is a set of datetime.date objects from start_date to end_date
+    all_dates = {start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)}
+
+    # Subtract existing_dates from all_dates to get available_dates
+    available_dates = list(all_dates - existing_dates)
+    available_dates.sort()
+    
+    # Determine the number of dates to sample
+    remaining_dates_to_sample = total_samples - len(existing_dates)
+    dates_to_sample = min(remaining_dates_to_sample, 25)
+    
+    # Convert datetime.datetime objects to datetime.date for consistency
+    next_batch = [date for date in available_dates[:dates_to_sample]]
+    return next_batch
+
+# Calculate 100 dates throughout the year 2022, excluding dates that already have data
+total_required_dates = 100
+sample_dates = calculate_sample_dates(datetime(2023, 1, 1).date(), datetime(2023, 12, 1).date(), 200, existing_dates)
+
+# Fetch data for each sample date and insert into the database
+for sample_date in sample_dates:
+    # Format the date for the API request
+    formatted_date = sample_date.strftime('%Y-%m-%d')
+
+    # API parameters for a single day
+    params = {
+        "latitude": 42.2776,
+        "longitude": -83.7409,
+        "start_date": formatted_date,
+        "end_date": formatted_date,
+        "hourly": ["temperature_2m", "rain", "snowfall"]
+    }
+
+    # Make the API request
+    response = requests.get("https://archive-api.open-meteo.com/v1/archive", params=params)
+    data = response.json()
+
+    if 'hourly' in data:
+        hourly_data = data['hourly']
+        times = hourly_data['time']
+        temperatures = hourly_data['temperature_2m']
+        rain_values = hourly_data.get('rain', [0] * len(times))
+        snowfall_values = hourly_data.get('snowfall', [0] * len(times))
+
+        # Just take the first entry of the day
+        date_str = times[0]
+        date_obj = datetime.strptime(date_str, "%Y-%m-%dT%H:%M")
+        date = date_obj.strftime("%Y-%m-%d %H:%M:%S")
+
+        temperature = temperatures[0]
+        rain = rain_values[0]
+        snowfall = snowfall_values[0]
+
+        try:
+            # Insert temperature data
+            cursor.execute("INSERT INTO temperature (date, temperature) VALUES (?, ?)", (date, temperature))
+            temp_id = cursor.lastrowid
+
+            # Insert precipitation data
+            cursor.execute("INSERT INTO precipitation (date, rain, snowfall, temp_id) VALUES (?, ?, ?, ?)",
+                           (date, rain, snowfall, temp_id))
+        except sqlite3.IntegrityError:
+            # Skip if this date already exists
+            continue
+        
+        
+        
+    # Fetch stock data
+    stock_data = fetch_stock_data_for_date(sample_date)
+    if stock_data:
+        # Extract stock data values
+        open_price = stock_data['open']
+        close_price = stock_data['close']
+        high_price = stock_data['high']
+        low_price = stock_data['low']
+        volume = stock_data['volume']
+
+        # Insert stock data
+        try:
+            cursor.execute("INSERT INTO stock_data (date, open_price, close_price, high_price, low_price, volume) VALUES (?, ?, ?, ?, ?, ?)",
+                        (sample_date.strftime("%Y-%m-%d"), open_price, close_price, high_price, low_price, volume))
+        except sqlite3.IntegrityError:
+            # Skip if this date already exists in stock_data table
+            continue
+        
+    # Fetch air quality data
+    air_quality_data = fetch_air_quality_data_for_date(sample_date)
+    if air_quality_data and 'hourly' in air_quality_data:
+        # Assuming you take the first entry of the day for simplicity
+        hourly_data = air_quality_data['hourly']
+        pm10 = hourly_data['pm10'][0]
+        pm2_5 = hourly_data['pm2_5'][0]
+        carbon_monoxide = hourly_data['carbon_monoxide'][0]
+        nitrogen_dioxide = hourly_data['nitrogen_dioxide'][0]
+        sulphur_dioxide = hourly_data['sulphur_dioxide'][0]
+        ozone = hourly_data['ozone'][0]
+
+        # Insert air quality data
+        try:
+            cursor.execute("INSERT INTO air_quality (temp_id, date, pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                           (temp_id, sample_date.strftime("%Y-%m-%d"), pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone))
+        except sqlite3.IntegrityError:
+            # Skip if this date already exists in air_quality table
+            continue
+
+# Commit the changes and close the database connection
+conn.commit()
+conn.close()
