@@ -1,27 +1,52 @@
-import openmeteo_requests
-
-import requests_cache
-import pandas as pd
-from retry_requests import retry
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 import requests
+import sqlite3
+import time
+from datetime import datetime, timedelta
 
+# Connect to SQLite database (or create it if it doesn't exist)
+conn = sqlite3.connect('weather_data.db')
+cursor = conn.cursor()
 
-# Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-openmeteo = openmeteo_requests.Client(session = retry_session)
+# Create tables if they don't exist
+cursor.execute('''CREATE TABLE IF NOT EXISTS temperature (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT UNIQUE,
+                    temperature REAL
+                )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS precipitation (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT,
+                    rain REAL,
+                    snowfall REAL,
+                    temp_id INTEGER,
+                    FOREIGN KEY(temp_id) REFERENCES temperature(id)
+                )''')
 
-# Make sure all required weather variables are listed here
-# The order of variables in hourly or daily is important to assign them correctly below
-url = "https://archive-api.open-meteo.com/v1/archive"
-params = {
-	"latitude": 42.2776,
-	"longitude": -83.7409,
-	"start_date": "2022-01-01",
-	"end_date": "2022-12-31",
-	"hourly": ["temperature_2m", "rain", "snowfall"]
-}
-responses = openmeteo.weather_api(url, params=params)
+# Create a table for air quality data if it doesn't exist
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS air_quality (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        temp_id INTEGER,
+        date TEXT UNIQUE,
+        pm10 REAL,
+        pm2_5 REAL,
+        carbon_monoxide REAL,
+        nitrogen_dioxide REAL,
+        sulphur_dioxide REAL,
+        ozone REAL,
+        FOREIGN KEY(temp_id) REFERENCES temperature(id)
+    )
+''')
+
+# Create a table for stock data if it doesn't exist
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS stock_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT UNIQUE,
+        open_price REAL,
+        close_price REAL,
+        high_price REAL,
+        low_price REAL,
+        volume INTEGER
+    )
+''')
