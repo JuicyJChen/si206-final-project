@@ -50,3 +50,31 @@ cursor.execute('''
         volume INTEGER
     )
 ''')
+
+
+def fetch_stock_data_for_date(date, symbol='DTE'):
+    api_key = '21030c7bd2b86ce748be56519bc6744d'  # Your MarketStack API key
+    endpoint = f"http://api.marketstack.com/v1/eod/{date.strftime('%Y-%m-%d')}"
+
+    params = {
+        'access_key': api_key,
+        'symbols': symbol
+       # 'date-from': date.strftime('%Y-%m-%d'),
+        #'date-to': date.strftime('%Y-%m-%d')# Format the date as required by the API
+        
+    }
+
+    response = requests.get(endpoint, params=params)
+    if response.status_code == 200:
+        data = response.json().get('data', [])
+        if data:
+            # Extract the first (and presumably only) entry
+            stock_data = data[0]
+            return {
+                'open': stock_data['open'],
+                'close': stock_data['close'],
+                'high': stock_data['high'],
+                'low': stock_data['low'],
+                'volume': stock_data['volume']
+            }
+    return None
