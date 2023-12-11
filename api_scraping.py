@@ -4,14 +4,18 @@ import time
 from datetime import datetime, timedelta
 
 # Connect to SQLite database (or create it if it doesn't exist)
-conn = sqlite3.connect('weather_data.db')
+conn = sqlite3.connect('weather_data_final.db')
 cursor = conn.cursor()
 
 # Create tables if they don't exist
 cursor.execute('''CREATE TABLE IF NOT EXISTS temperature (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT UNIQUE,
-                    temperature REAL
+                    temperature REAL,
+                    location_id INTEGER,
+                    latitude REAL,
+                    longitude REAL,
+                    FOREIGN KEY (location_id) REFERENCES locations(location_id)
                 )''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS precipitation (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,6 +23,10 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS precipitation (
                     rain REAL,
                     snowfall REAL,
                     temp_id INTEGER,
+                    location_id INTEGER,
+                    latitude REAL,
+                    longitude REAL,
+                    FOREIGN KEY (location_id) REFERENCES locations(location_id),
                     FOREIGN KEY(temp_id) REFERENCES temperature(id)
                 )''')
 
@@ -34,6 +42,10 @@ cursor.execute('''
         nitrogen_dioxide REAL,
         sulphur_dioxide REAL,
         ozone REAL,
+        location_id INTEGER,
+        latitude REAL,
+        longitude REAL,
+        FOREIGN KEY (location_id) REFERENCES locations(location_id),
         FOREIGN KEY(temp_id) REFERENCES temperature(id)
     )
 ''')
@@ -50,6 +62,15 @@ cursor.execute('''
         volume INTEGER
     )
 ''')
+
+
+
+
+
+
+
+
+
 
 
 def fetch_stock_data_for_date(date, symbol='DTE'):
@@ -79,6 +100,8 @@ def fetch_stock_data_for_date(date, symbol='DTE'):
             }
     return None
 
+
+
 def fetch_air_quality_data_for_date(date):
     # Your API request for air quality data
     params = {
@@ -93,7 +116,7 @@ def fetch_air_quality_data_for_date(date):
         return response.json()
     else:
         return None
-    
+
 # Function to get the dates that already have data
 def get_existing_dates(db_connection):
     cursor = db_connection.cursor()
@@ -101,7 +124,6 @@ def get_existing_dates(db_connection):
     return {datetime.strptime(row[0].split()[0], "%Y-%m-%d").date() for row in cursor.fetchall()}
 
 existing_dates = get_existing_dates(conn)
-
 
 # Function to calculate sample dates throughout the year, excluding existing dates
 def calculate_sample_dates(start_date, end_date, total_samples, existing_dates):
@@ -122,9 +144,15 @@ def calculate_sample_dates(start_date, end_date, total_samples, existing_dates):
 
 # Calculate 100 dates throughout the year 2022, excluding dates that already have data
 total_required_dates = 100
-sample_dates = calculate_sample_dates(datetime(2023, 1, 1).date(), datetime(2023, 12, 1).date(), 200, existing_dates)
+sample_dates = calculate_sample_dates(datetime(2023, 1, 1).date(), datetime(2023, 12, 1).date(), 300, existing_dates)
 
 # Fetch data for each sample date and insert into the database
+ann_arbor_latitude = 42.2776
+ann_arbor_longitude = -83.7409
+
+nyc_latitude = 40.7128
+nyc_longitude = -74.0060
+
 for sample_date in sample_dates:
     # Format the date for the API request
     formatted_date = sample_date.strftime('%Y-%m-%d')
@@ -159,13 +187,19 @@ for sample_date in sample_dates:
         snowfall = snowfall_values[0]
 
         try:
+            cursor.execute("SELECT location_id FROM locations WHERE city_name = ?", ("Ann Arbor",))
+            location_id = cursor.fetchone()[0]
+            cursor.execute("SELECT latitude FROM locations WHERE city_name = ?", ("Ann Arbor",))
+            latitude = cursor.fetchone()[0]
+            cursor.execute("SELECT longitude FROM locations WHERE city_name = ?", ("Ann Arbor",))
+            longitude = cursor.fetchone()[0]
             # Insert temperature data
-            cursor.execute("INSERT INTO temperature (date, temperature) VALUES (?, ?)", (date, temperature))
+            cursor.execute("INSERT INTO temperature (date, temperature, location_id, latitude, longitude) VALUES (?, ?, ?, ?, ?)", (date, temperature, location_id, latitude, longitude))
             temp_id = cursor.lastrowid
 
             # Insert precipitation data
-            cursor.execute("INSERT INTO precipitation (date, rain, snowfall, temp_id) VALUES (?, ?, ?, ?)",
-                           (date, rain, snowfall, temp_id))
+            cursor.execute("INSERT INTO precipitation (date, rain, snowfall, temp_id, location_id, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                           (date, rain, snowfall, temp_id, location_id, latitude, longitude))
         except sqlite3.IntegrityError:
             # Skip if this date already exists
             continue
@@ -204,8 +238,12 @@ for sample_date in sample_dates:
 
         # Insert air quality data
         try:
-            cursor.execute("INSERT INTO air_quality (temp_id, date, pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                           (temp_id, sample_date.strftime("%Y-%m-%d"), pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone))
+            cursor.execute("SELECT latitude FROM locations WHERE city_name = ?", ("Ann Arbor",))
+            latitude = cursor.fetchone()[0]
+            cursor.execute("SELECT longitude FROM locations WHERE city_name = ?", ("Ann Arbor",))
+            longitude = cursor.fetchone()[0]
+            cursor.execute("INSERT INTO air_quality (temp_id, date, pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone, location_id, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (temp_id, sample_date.strftime("%Y-%m-%d"), pm10, pm2_5, carbon_monoxide, nitrogen_dioxide, sulphur_dioxide, ozone, location_id, latitude, longitude))
         except sqlite3.IntegrityError:
             # Skip if this date already exists in air_quality table
             continue
