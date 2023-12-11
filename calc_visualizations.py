@@ -27,3 +27,26 @@ GROUP BY
     Month
 """
 df_viz1 = pd.read_sql_query(query1, conn)
+
+query2 = """
+SELECT 
+    strftime('%Y-%m', aq.date) AS Month,
+    AVG(aq.pm10) AS AvgPM10,
+    AVG(aq.pm2_5) AS AvgPM25,
+    AVG(t.temperature) AS AvgTemperature,
+    AVG(s.open_price + s.close_price + s.high_price + s.low_price) / 4 AS AvgStockPrice
+FROM 
+    air_quality aq
+JOIN 
+    temperature t ON aq.temp_id = t.id
+JOIN 
+    stock_data s ON aq.date = s.date
+WHERE 
+    aq.date BETWEEN '2023-01-01' AND '2023-12-01'
+GROUP BY 
+    Month
+"""
+df_viz2 = pd.read_sql_query(query2, conn)
+
+# Close the database connection
+conn.close()
