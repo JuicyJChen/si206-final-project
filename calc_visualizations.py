@@ -112,3 +112,94 @@ def main():
     plt.title("Air Quality (PM10 & PM2.5) in Ann Arbor and Stock Price (2023)")
     plt.legend(loc="upper left")
     plt.show()
+ # Visualization 3: Average Rainfall vs. Air Quality Index (PM10 as a proxy)
+    query3 = """
+    SELECT
+        strftime('%Y-%m', p.date) AS Month,
+        AVG(p.rain) AS AvgRainfall,
+        AVG(aq.pm10) AS AvgPM10
+    FROM
+        precipitation p
+    JOIN
+        air_quality aq ON strftime('%Y-%m-%d', p.date) = strftime('%Y-%m-%d', aq.date)
+    GROUP BY
+        Month
+    """
+    df_viz3 = pd.read_sql_query(query3, conn)
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    ax1.set_xlabel("Month (2023)")
+    ax1.set_ylabel("Avg Rainfall (mm)", color="tab:blue")
+    ax1.bar(
+        df_viz3["Month"].values,
+        df_viz3["AvgRainfall"].values,
+        color="tab:blue",
+        label="Avg Rainfall",
+    )
+    ax1.tick_params(axis="y", labelcolor="tab:blue")
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Avg PM10 (μg/m³)", color="tab:green")
+    ax2.plot(
+        df_viz3["Month"].values,
+        df_viz3["AvgPM10"].values,
+        color="tab:green",
+        label="Avg PM10",
+    )
+    ax2.tick_params(axis="y", labelcolor="tab:green")
+
+    plt.title("Average Rainfall in Ann Arbor vs. Air Quality Index (2023)")
+    plt.show()
+
+    # Visualization 4: Temperature Variance vs. Stock Market Volatility
+    query4 = """
+    SELECT
+        strftime('%Y-%m', t.date) AS Month,
+        AVG((t.temperature - (SELECT AVG(temperature) FROM temperature)) * (t.temperature - (SELECT AVG(temperature) FROM temperature))) AS TempVariance,
+        AVG((s.high_price - s.low_price) / s.open_price) AS StockVolatility
+    FROM
+        temperature t
+    JOIN
+        stock_data s ON strftime('%Y-%m-%d', t.date) = strftime('%Y-%m-%d', s.date)
+    GROUP BY
+        Month
+    """
+    df_viz4 = pd.read_sql_query(query4, conn)
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    ax1.set_xlabel("Month (2023)")
+    ax1.set_ylabel("Temperature Variance (°C²)", color="tab:red")
+    ax1.plot(
+        df_viz4["Month"].values,
+        df_viz4["TempVariance"].values,
+        color="tab:red",
+        label="Temperature Variance",
+    )
+    ax1.tick_params(axis="y", labelcolor="tab:red")
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("Stock Market Volatility", color="tab:purple")
+    ax2.plot(
+        df_viz4["Month"].values,
+        df_viz4["StockVolatility"].values,
+        color="tab:purple",
+        label="Stock Market Volatility",
+    )
+    ax2.tick_params(axis="y", labelcolor="tab:purple")
+
+    plt.title("Temperature Variance in Ann Arbor vs. Stock Market Volatility (2023)")
+    plt.show()
+
+    # Write query results to a text file
+    with open('calculated_data.txt', 'w') as file:
+        file.write("Average Temperature in Ann Arbor vs Stock Price (2023)\n")
+        df_viz1.to_string(file)
+        file.write("\n\nAir Quality (PM10 & PM2.5) in Ann Arbor and Stock Price (2023)\n")
+        df_viz2.to_string(file)
+        file.write("\n\nAverage Rainfall in Ann Arbor vs. Air Quality Index (2023)\n")
+        df_viz3.to_string(file)
+        file.write("\n\nTemperature Variance in Ann Arbor vs. Stock Market Volatility (2023)\n")
+        df_viz4.to_string(file)
+        
+if __name__ == "__main__":
+    main()
