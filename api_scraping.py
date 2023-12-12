@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 
 def fetch_stock_data_for_date(date, symbol="DTE"):
-    api_key = "21030c7bd2b86ce748be56519bc6744d"  # Your MarketStack API key
+    api_key = "f5ec663e88412c512688c7b64e81620d"  # Your MarketStack API key
     endpoint = f"http://api.marketstack.com/v1/eod/{date.strftime('%Y-%m-%d')}"
 
     params = {
@@ -158,7 +158,7 @@ def main():
     # Calculate 100 dates throughout the year 2022, excluding dates that already have data
     total_required_dates = 100
     sample_dates = calculate_sample_dates(
-        datetime(2023, 1, 1).date(), datetime(2023, 12, 1).date(), 300, existing_dates
+        datetime(2023, 1, 1).date(), datetime(2023, 12, 31).date(), 500, existing_dates
     )
 
     for sample_date in sample_dates:
@@ -167,8 +167,8 @@ def main():
 
         # API parameters for a single day
         params = {
-            "latitude": 42.2776,
-            "longitude": -83.7409,
+            "latitude": 40.71427,
+            "longitude": -74.00597,
             "start_date": formatted_date,
             "end_date": formatted_date,
             "hourly": ["temperature_2m", "rain", "snowfall"],
@@ -199,16 +199,16 @@ def main():
             try:
                 cursor.execute(
                     "SELECT location_id FROM locations WHERE city_name = ?",
-                    ("Ann Arbor",),
+                    ("Boston",),
                 )
                 location_id = cursor.fetchone()[0]
                 cursor.execute(
-                    "SELECT latitude FROM locations WHERE city_name = ?", ("Ann Arbor",)
+                    "SELECT latitude FROM locations WHERE city_name = ?", ("Boston",)
                 )
                 latitude = cursor.fetchone()[0]
                 cursor.execute(
                     "SELECT longitude FROM locations WHERE city_name = ?",
-                    ("Ann Arbor",),
+                    ("Boston",),
                 )
                 longitude = cursor.fetchone()[0]
                 # Insert temperature data
@@ -269,7 +269,7 @@ def main():
             # Insert air quality data
             try:
                 cursor.execute(
-                    "SELECT latitude FROM locations WHERE city_name = ?", ("Ann Arbor",)
+                    "SELECT latitude FROM locations WHERE city_name = ?", ("Boston",)
                 )
                 latitude = cursor.fetchone()[0]
                 cursor.execute(

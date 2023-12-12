@@ -23,7 +23,7 @@ def main():
     JOIN
         stock_data s ON strftime('%Y-%m-%d', t.date) = strftime('%Y-%m-%d', s.date)
     WHERE
-        t.date BETWEEN '2023-01-01' AND '2023-12-01'
+        t.date BETWEEN '2023-01-01' AND '2023-10-30'
     GROUP BY
         Month
     """
@@ -43,7 +43,7 @@ def main():
     JOIN 
         stock_data s ON aq.date = s.date
     WHERE 
-        aq.date BETWEEN '2023-01-01' AND '2023-12-01'
+        aq.date BETWEEN '2023-01-01' AND '2023-10-30'
     GROUP BY 
         Month
     """
@@ -77,7 +77,7 @@ def main():
     ax2.tick_params(axis="y", labelcolor="tab:red")
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.title("Average Temperature in Ann Arbor vs Stock Price (2023)")
+    plt.title("Average Temperature in Ann Arbor vs DTE Stock Price (2023)")
     plt.show()
 
     # Plotting Visualization 2
@@ -109,7 +109,7 @@ def main():
     ax2.tick_params(axis="y", labelcolor="green")
 
     fig.tight_layout()
-    plt.title("Air Quality (PM10 & PM2.5) in Ann Arbor and Stock Price (2023)")
+    plt.title("Air Quality (PM10 & PM2.5) in Ann Arbor and DTE Stock Price (2023)")
     plt.legend(loc="upper left")
     plt.show()
  # Visualization 3: Average Rainfall vs. Air Quality Index (PM10 as a proxy)
@@ -122,6 +122,8 @@ def main():
         precipitation p
     JOIN
         air_quality aq ON strftime('%Y-%m-%d', p.date) = strftime('%Y-%m-%d', aq.date)
+    WHERE
+        p.date BETWEEN '2023-01-01' AND '2023-10-30'
     GROUP BY
         Month
     """
@@ -161,6 +163,8 @@ def main():
         temperature t
     JOIN
         stock_data s ON strftime('%Y-%m-%d', t.date) = strftime('%Y-%m-%d', s.date)
+    WHERE
+        t.date BETWEEN '2023-01-01' AND '2023-10-30'
     GROUP BY
         Month
     """
@@ -187,7 +191,7 @@ def main():
     )
     ax2.tick_params(axis="y", labelcolor="tab:purple")
 
-    plt.title("Temperature Variance in Ann Arbor vs. Stock Market Volatility (2023)")
+    plt.title("Temperature Variance in Ann Arbor vs. DTE Stock Market Volatility (2023)")
     plt.show()
 
     # Write query results to a text file
